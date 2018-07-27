@@ -7,9 +7,11 @@ REBOL [
 
 ; Variables
 source: %../template/
+source-scroll: %../template-scroll/
 extern: %../../../extern/
 params: reduce [
-  'name       {Project name, relative or full path}   _
+  'name           {Project name, relative or full path}   					  _
+  '-s {Create an orx/Scroll project instead of an Orx project}   'optional
 ]
 platforms:  [
   {windows}   [config [{gmake} {codelite} {codeblocks} {vs2013} {vs2015} {vs2017}]    premake %premake4.exe   setup {setup.bat}   script %init.bat    ]
@@ -75,9 +77,14 @@ usage: func [
 
   print rejoin [
     newline newline
+	explanation: copy {}
     foreach [param desc default] params [
-      prin rejoin [{ } either default [rejoin [{[} param {]}]] [param]]
-      rejoin [{  = } param {: } desc either default [rejoin [{=[} default {], optional}]] [{, required}] newline]
+      prin rejoin [{ } either default [rejoin [{[} param {]}]] [param]] ; wrap square brackets around optional args
+    ]
+	print {}
+	print {}
+    foreach [param desc default] params [
+	  print rejoin [{  = } param {: } desc either default [rejoin [{, optional}]] [{, required}]]
     ]
   ]
   quit
@@ -88,17 +95,24 @@ either system/options/args [
   either (length? system/options/args) > ((length? params) / 3) [
     usage/message [{Too many arguments:} mold system/options/args]
   ] [
+    ;print "argument number is the same"
     use [arg] [
       arg: system/options/args
       foreach [param desc default] params [
-        either tail? arg [
+		;print [{processing} param]
+        either tail? arg [ ;are less args passed in then available params?
+		  ;print [param {is tail}]
           either default [
+		    ;print [param {is default}]
             set param default
           ] [
+		    ;print [param {is not default}]
             usage/message [{Not enough arguments:} mold system/options/args]
           ]
         ] [
+		  ;print [param {is not tail}]
           set param arg/1
+		  ;print [{setting } param {to} arg/1]
           arg: next arg
         ]
       ]
@@ -108,8 +122,20 @@ either system/options/args [
   usage
 ]
 
+
+;probe system/options/script
+;probe source
+;print [first split-path system/options/script source]
+;print [{-s} -s]
+
 ; Locates source
+if (-s = {-s}) [
+	source: source-scroll
+] 
+
 source: clean-path rejoin [first split-path system/options/script source]
+
+;print [{source is } source]
 
 ; Runs setup if premake isn't found
 unless exists? source/:premake-source [
